@@ -11,13 +11,17 @@ export cluster_name=demo-cluster
 ## Get EKS OIDC Issuer URL (This URL is the OIDC Provider URL associated with your EKS cluster.)
 
 ```
-> aws eks describe-cluster --name $cluster_name --query "cluster.identity.oidc.issuer" --output text | cut -d '/' -f 5
+> aws eks describe-cluster --name $cluster_name --query "cluster.identity.oidc.issuer" --output text
 o/p: https://oidc.eks.us-east-1.amazonaws.com/id/ABCD1234EFGH5678IJKL9012MNOP345
 
 > oidc_id=$(aws eks describe-cluster --name $cluster_name --query "cluster.identity.oidc.issuer" --output text | cut -d '/' -f 5)
 > echo $oidc_id
 ex: ABEA90D53AD43E718B0AFBBFC2E5FB1C
 ```
+Note: 
+Old Cluster --> OIDC ID: ABCD1234
+Destroy Cluster
+New Cluster --> OIDC ID: XYZ98765
 
 ## Check if there is an IAM OIDC provider configured already
 
@@ -66,6 +70,9 @@ eksctl create iamserviceaccount \
   --attach-policy-arn=arn:aws:iam::<your-aws-account-id>:policy/AWSLoadBalancerControllerIAMPolicy \
   --approve
 ```
+
+> kubectl get serviceaccounts -A | grep -i aws-load-balancer-controller
+
 Note: update <your-cluster-name> and <your-aws-account-id>
 if you won't create OIDC you will error like below
 ```
@@ -95,20 +102,36 @@ Install
 
 ```
 helm install aws-load-balancer-controller eks/aws-load-balancer-controller \
-  -n kube-system \
-  --set clusterName=<your-cluster-name> \
-  --set serviceAccount.create=false \
-  --set serviceAccount.name=aws-load-balancer-controller \
-  --set region=<region> \
-  --set vpcId=<your-vpc-id>
+--namespace kube-system \
+--set clusterName=<your-cluster-name> \
+--set serviceAccount.create=false \
+--set serviceAccount.name=aws-load-balancer-controller \
+--set region=<region> \
+--set vpcId=<your-vpc-id>
 ```
+## 
+Flow:
+```
+eksctl create iamserviceaccount
+          |
+          v
+CloudFormation Stack
+          |
+          +--> IAM Role
+          +--> Trust Relationship (OIDC)
+          +--> IAM Role Policies
+          |
+          v
+Kubernetes ServiceAccount
+```
+
 Note: OIDC provider alredy enable between EKS and IAM, So now Service account can use IAM role with policy permissions, these Service account attached to ALB controller while installing using helm
 
 Verify that the deployments are running.
 
-```
-kubectl get deployment -n kube-system aws-load-balancer-controller
-```
+
+> kubectl get deployment -n kube-system aws-load-balancer-controller
+> kubectl get ingressclass (if you use this class in ingress resource then it will use aws-load-balancer-controller for traffic flow)
 
 You might face the issue, unable to see the loadbalancer address while giving k get ing -n robot-shop at the end. To avoid this your **AWSLoadBalancerControllerIAMPolicy** should have the required permissions for elasticloadbalancing:DescribeListenerAttributes.
 
