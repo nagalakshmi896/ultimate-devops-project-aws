@@ -80,6 +80,23 @@ if you won't create OIDC you will error like below
 Error: unable to create iamserviceaccount(s) without IAM OIDC provider enabled
 ```
 
+##  OIDC+IAM Flow:
+```
+eksctl create iamserviceaccount
+          |
+          v
+CloudFormation Stack
+          |
+          +--> IAM Role
+          +--> Trust Relationship (OIDC)
+          +--> IAM Role Policies
+          |
+          v
+Kubernetes ServiceAccount
+```
+
+Note: OIDC provider alredy enable between EKS and IAM, So now Service account can use IAM role with policy permissions, these Service account attached to ALB controller while installing using helm
+
 ## Deploy ALB controller
 
 Add helm repo
@@ -109,27 +126,21 @@ helm install aws-load-balancer-controller eks/aws-load-balancer-controller \
 --set region=<region> \
 --set vpcId=<your-vpc-id>
 ```
-## 
-Flow:
-```
-eksctl create iamserviceaccount
-          |
-          v
-CloudFormation Stack
-          |
-          +--> IAM Role
-          +--> Trust Relationship (OIDC)
-          +--> IAM Role Policies
-          |
-          v
-Kubernetes ServiceAccount
-```
+Note: Give correct VPC id , if you give wrong value also it will show error until you check logs of pods.
 
-Note: OIDC provider alredy enable between EKS and IAM, So now Service account can use IAM role with policy permissions, these Service account attached to ALB controller while installing using helm
+> helm get values aws-load-balancer-controller -n kube-system
+> if you want to update with new value use below
+```
+helm upgrade aws-load-balancer-controller eks/aws-load-balancer-controller \
+  -n kube-system \
+  --set clusterName=my-eks-cluster \
+  --set serviceAccount.create=false \
+  --set serviceAccount.name=aws-load-balancer-controller \
+  --set region=us-east-1 \
+  --set vpcId=vpc-053ce01c486ce2014
+```
 
 Verify that the deployments are running.
-
-
 > kubectl get deployment -n kube-system aws-load-balancer-controller
 > kubectl get ingressclass (if you use this class in ingress resource then it will use aws-load-balancer-controller for traffic flow)
 
