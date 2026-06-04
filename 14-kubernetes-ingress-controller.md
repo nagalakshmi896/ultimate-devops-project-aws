@@ -139,6 +139,7 @@ helm upgrade aws-load-balancer-controller eks/aws-load-balancer-controller \
   --set region=us-east-1 \
   --set vpcId=vpc-053ce01c486ce2014
 ```
+> kubectl rollout restart deployment aws-load-balancer-controller -n kube-system
 
 Verify that the deployments are running.
 > kubectl get deployment -n kube-system aws-load-balancer-controller
