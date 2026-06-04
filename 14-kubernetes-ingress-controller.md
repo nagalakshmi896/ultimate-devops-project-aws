@@ -21,13 +21,15 @@ ex: ABEA90D53AD43E718B0AFBBFC2E5FB1C
 
 ## Check if there is an IAM OIDC provider configured already
 
-- aws iam list-open-id-connect-providers | grep $oidc_id | cut -d "/" -f4\n 
+- aws iam list-open-id-connect-providers
+or
+aws iam list-open-id-connect-providers | grep $oidc_id | cut -d "/" -f4  (Not working)
 
-If not, run the below command
+`If not`, run the below command
 
 Step 1: Configure OIDC Provider
 
-Creates trust between:  EKS Cluster and AWS IAM, After run below command IAM can trust `Kubernetes Service Accounts`.
+Creates trust between `EKS Cluster` (iamserviceaccount will use it) and `AWS IAM`, After run below command IAM can trust `Kubernetes Service Accounts`.
 
 ```
 eksctl utils associate-iam-oidc-provider --cluster $cluster_name --approve
@@ -65,6 +67,11 @@ eksctl create iamserviceaccount \
   --approve
 ```
 Note: update <your-cluster-name> and <your-aws-account-id>
+if you won't create OIDC you will error like below
+```
+2026-06-04 11:18:45 [!]  no IAM OIDC provider associated with cluster, try 'eksctl utils associate-iam-oidc-provider --region=us-east-1 --cluster=my-eks-cluster'
+Error: unable to create iamserviceaccount(s) without IAM OIDC provider enabled
+```
 
 ## Deploy ALB controller
 
